@@ -1,0 +1,7 @@
+﻿services:
+  testhelper.minimalapis.app:
+    image: testhelper.minimalapis.app
+    build:
+      context: .
+      dockerfile: demos/MinimalApis/TestHelper.MinimalApis.App/Dockerfile
+
