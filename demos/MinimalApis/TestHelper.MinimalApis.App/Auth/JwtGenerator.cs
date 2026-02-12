@@ -38,7 +38,7 @@ public class JwtGenerator : IJwtGenerator
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, appUser.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email!),
+            new(JwtRegisteredClaimNames.Name, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

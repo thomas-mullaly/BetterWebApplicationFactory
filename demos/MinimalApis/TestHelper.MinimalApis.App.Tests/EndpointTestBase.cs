@@ -1,10 +1,6 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Npgsql;
 using TestHelper.MinimalApis.App.Data;
 using TestHelper.MinimalApis.App.Identity;
@@ -15,7 +11,7 @@ namespace TestHelper.MinimalApis.App.Tests;
 public class EndpointTestCollectionDefinition : ICollectionFixture<EndpointTestFixture>;
 
 [Collection(nameof(EndpointTestCollectionDefinition))]
-public abstract class EndpointTestBase : AspnetTestBase<ClientFactory<Program>, Program>, IAsyncLifetime
+public abstract class EndpointTestBase : AspnetTestBase<MinimalApiClientFactory, MinimalApiWebApplicationFactory, Program>, IAsyncLifetime
 {
     protected AppDbContext SetupDbContext { get; private set; } = default!;
     protected AppDbContext AssertionDbContext { get; private set; } = default!;
@@ -23,13 +19,14 @@ public abstract class EndpointTestBase : AspnetTestBase<ClientFactory<Program>, 
     protected IdentityContext SetupIdentityContext { get; private set; } = default!;
     protected IdentityContext AssertionIdentityContext { get; private set; } = default!;
     protected IdentityContext TestIdentityContext { get; private set; } = default!;
-    protected UserManager<ApplicationUser> UserManager { get; private set; } = default!;
+    protected TestAuthHelper AuthHelper { get; private set; } = default!;
+    private AsyncServiceScope _scope;
 
-    protected override ClientFactory<Program> ClientFactory
+    protected override MinimalApiClientFactory ClientFactory
     {
         get
         {
-            return new ClientFactory<Program>(TestId, WebAppFactory)
+            return new MinimalApiClientFactory(TestId, WebAppFactory, AuthHelper)
                 .AddServiceOverride(services =>
                 {
                     services.AddSingleton(TestDbContext);
@@ -70,19 +67,8 @@ public abstract class EndpointTestBase : AspnetTestBase<ClientFactory<Program>, 
         await SetupAndEnrollContextsInTransaction(SetupDbContext, AssertionDbContext, TestDbContext);
         await SetupAndEnrollContextsInTransaction(SetupIdentityContext, AssertionIdentityContext, TestIdentityContext);
 
-        await using var scope = WebAppFactory.Services.CreateAsyncScope();
-        UserManager = new UserManager<ApplicationUser>(
-            new UserStore<ApplicationUser, IdentityRole, IdentityContext>(
-                SetupIdentityContext,
-                scope.ServiceProvider.GetRequiredService<IdentityErrorDescriber>()),
-            scope.ServiceProvider.GetRequiredService<IOptions<IdentityOptions>>(),
-            scope.ServiceProvider.GetRequiredService<IPasswordHasher<ApplicationUser>>(),
-            scope.ServiceProvider.GetRequiredService<IEnumerable<IUserValidator<ApplicationUser>>>(),
-            scope.ServiceProvider.GetRequiredService<IEnumerable<IPasswordValidator<ApplicationUser>>>(),
-            scope.ServiceProvider.GetRequiredService<ILookupNormalizer>(),
-            scope.ServiceProvider.GetRequiredService<IdentityErrorDescriber>(),
-            scope.ServiceProvider,
-            scope.ServiceProvider.GetRequiredService<ILogger<UserManager<ApplicationUser>>>());
+        _scope = WebAppFactory.Services.CreateAsyncScope();
+        AuthHelper = new TestAuthHelper(_scope.ServiceProvider, SetupIdentityContext, SetupDbContext);
 
         ClientFactory.AddServiceOverride(services =>
         {
@@ -102,6 +88,7 @@ public abstract class EndpointTestBase : AspnetTestBase<ClientFactory<Program>, 
         await SetupIdentityContext.DisposeAsync();
         await AssertionIdentityContext.DisposeAsync();
         await TestIdentityContext.DisposeAsync();
+        await _scope.DisposeAsync();
     }
 
     private async Task SetupAndEnrollContextsInTransaction(DbContext primary, params DbContext[] secondaryContexts)

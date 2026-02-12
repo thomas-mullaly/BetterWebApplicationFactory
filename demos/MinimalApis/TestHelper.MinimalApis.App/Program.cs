@@ -8,6 +8,7 @@ using TestHelper.MinimalApis.App.Auth;
 using TestHelper.MinimalApis.App.Data;
 using TestHelper.MinimalApis.App.Endpoints;
 using TestHelper.MinimalApis.App.Identity;
+using TestHelper.MinimalApis.App.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,7 +26,7 @@ builder.Services.AddDefaultIdentity<ApplicationUser>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddSingleton<IJwtGenerator, JwtGenerator>();
-builder.Services.AddOptions<JwtSettings>(nameof(JwtSettings));
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(nameof(JwtSettings)));
 
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUser>());
@@ -47,8 +48,9 @@ builder.Services
             ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
             ValidAudience = builder.Configuration["JwtSettings:Audience"],
             IssuerSigningKey =
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]))
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]))
         };
+        options.MapInboundClaims = false;
     });
 
 builder.Services.AddAuthorization(options =>
@@ -66,6 +68,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
+app.UseMiddleware<CurrentUserMiddleware>();
 
 var summaries = new[]
 {
@@ -88,6 +91,7 @@ app.MapGet("/weatherforecast", () =>
 
 var apiGroup = app.MapGroup("/api/");
 AuthEndpoints.RegisterRoutes(apiGroup);
+ListEndpoints.RegisterRoutes(apiGroup);
 
 app.Run();
 

@@ -1,12 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace TestHelper;
 
 public abstract class ClientFactoryBase;
 
-public class ClientFactory<TProgram> : ClientFactoryBase
+public class ClientFactory<TProgram, TClientFactoryImpl> : ClientFactoryBase
     where TProgram : class
+    where TClientFactoryImpl : ClientFactory<TProgram, TClientFactoryImpl>
 {
     private readonly List<Action<IServiceCollection>> _serviceOverrides;
     private readonly Guid _testId;
@@ -21,10 +21,10 @@ public class ClientFactory<TProgram> : ClientFactoryBase
         _serviceOverrides = new();
     }
 
-    public ClientFactory<TProgram> AddServiceOverride(Action<IServiceCollection> serviceOverride)
+    public TClientFactoryImpl AddServiceOverride(Action<IServiceCollection> serviceOverride)
     {
         _serviceOverrides.Add(serviceOverride);
-        return this;
+        return (TClientFactoryImpl)this;
     }
 
     public HttpClient CreateClient()
@@ -36,6 +36,10 @@ public class ClientFactory<TProgram> : ClientFactoryBase
             .CreateClient();
         client.DefaultRequestHeaders.Add(_webApplicationFactory.RequestIdHeader, _testId.ToString());
 
+        CustomizeHttpClient(client);
+
         return client;
     }
+
+    protected virtual void CustomizeHttpClient(HttpClient client) { }
 }

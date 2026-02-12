@@ -8,9 +8,9 @@ namespace TestHelper.MinimalApis.App.Endpoints;
 
 public static class ListEndpoints
 {
-    public static void RegisterRoutes(WebApplication app)
+    public static void RegisterRoutes(RouteGroupBuilder routeGroup)
     {
-        app.MapGet("/lists", GetList);
+        routeGroup.MapGet("/lists", GetList);
     }
 
     private static async Task<IResult> GetList(
@@ -28,7 +28,14 @@ public static class ListEndpoints
         {
             Id = list.Id,
             Name = list.Name,
-            Items = list.Items.Select(i => new TodoItemDto { Id = i.Id, Name = i.Name }).ToList()
+            Items = list.Items.Select(i => new TodoItemDto
+            {
+                Id = i.Id,
+                Name = i.Name,
+                TodoListId = i.TodoListId,
+                CreatedAt = i.CreatedAt,
+                CompletedAt = i.CompletedAt
+            }).ToList()
         }).ToList();
 
         return ApiResults.Ok(listDtos);

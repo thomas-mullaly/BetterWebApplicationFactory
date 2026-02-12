@@ -17,8 +17,8 @@ public class CurrentUserMiddleware
     {
         if (context.User.Identity?.IsAuthenticated is true)
         {
-            currentUser.UserId = Guid.Parse(context.User.Identity.Name);
-            currentUser.Username = context.User.FindFirstValue(JwtRegisteredClaimNames.Email) ?? string.Empty;
+            currentUser.UserId = Guid.Parse(context.User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+            currentUser.Username = context.User.FindFirstValue(JwtRegisteredClaimNames.Name) ?? string.Empty;
         }
 
         await _next(context);

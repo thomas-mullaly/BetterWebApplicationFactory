@@ -1,14 +1,15 @@
 ﻿namespace TestHelper;
 
-public abstract class AspnetTestBase<TClientFactory, TProgram>
-    where TClientFactory : ClientFactoryBase
+public abstract class AspnetTestBase<TClientFactory, TWebAppFactory, TProgram>
+    where TClientFactory : ClientFactory<TProgram, TClientFactory>
+    where TWebAppFactory : BetterWebAppFactory<TProgram>
     where TProgram : class
 {
-    protected BetterWebAppFactory<TProgram> WebAppFactory { get; }
+    protected TWebAppFactory WebAppFactory { get; }
     protected abstract TClientFactory ClientFactory { get; }
     protected Guid TestId => Guid.NewGuid();
 
-    protected AspnetTestBase(BetterWebAppFactory<TProgram> factory)
+    protected AspnetTestBase(TWebAppFactory factory)
     {
         WebAppFactory = factory;
     }
